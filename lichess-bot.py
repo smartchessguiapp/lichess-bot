@@ -177,7 +177,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                             mwtime = wtime - elapsed_thinking_time_ms
                         else:
                             mbtime = btime - elapsed_thinking_time_ms
-                        if ( mwtime > 0 ) and ( mbtime > 0):
+                        if ( mwtime > 0 ) and ( mbtime > 0 ):
                             ponder_board = board.copy()
                             ponder_board.push(best_move)
                             ponder_board.push(ponder_move)
@@ -197,7 +197,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
     finally:
         print("--- {} Game over".format(game.url()))
         engine.quit()
-        if not ( ponder_thread is None):
+        if not ( ponder_thread is None ):
             print("shutting down ponder")
             ponder_thread.join()
             ponder_thread = None
