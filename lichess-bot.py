@@ -176,7 +176,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                         if game.is_white:
                             mwtime = wtime - elapsed_thinking_time_ms
                         else:
-                            mwtime = btime - elapsed_thinking_time_ms
+                            mbtime = btime - elapsed_thinking_time_ms
                         if ( mwtime > 0 ) and ( mbtime > 0):
                             ponder_board = board.copy()
                             ponder_board.push(best_move)
