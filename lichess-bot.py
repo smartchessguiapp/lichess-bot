@@ -147,7 +147,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                     thinking_started_at = time.time()
                     if not ( ponder_thread is None ):
                         move_uci = moves[-1]
-                        print(move_uci, ponder_uci)
+                        #print(move_uci, ponder_uci)
                         if ponder_uci == move_uci:
                             print("ponderhit! opponent played the expected move")
                             ponder_thread.join()
