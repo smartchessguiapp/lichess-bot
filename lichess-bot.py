@@ -169,7 +169,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                         print("searching for move")
                         best_move , ponder_move = engine.search_with_ponder(board, wtime, btime, winc, binc)
                     if is_uci and not ( ponder_move is None ):
-                        li.chat(game_id,"player","pondering on "+ponder_move.uci())
+                        #li.chat(game_id,"player","pondering on "+ponder_move.uci())
                         mwtime = wtime
                         mbtime = btime
                         elapsed_thinking_time_ms = int ( ( time.time() - thinking_started_at ) * 1000 )
