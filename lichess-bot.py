@@ -116,6 +116,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
 
     engine_cfg = config["engine"]
     is_uci = engine_cfg["protocol"] == "uci"
+    is_uci_ponder = is_uci and engine_cfg.get("uci_ponder", False)
     polyglot_cfg = engine_cfg.get("polyglot", {})
 
     if not polyglot_cfg.get("enabled") or not play_first_book_move(game, engine, board, li, polyglot_cfg):
@@ -147,14 +148,11 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                     thinking_started_at = time.time()
                     if not ( ponder_thread is None ):
                         move_uci = moves[-1]
-                        #print(move_uci, ponder_uci)
                         if ponder_uci == move_uci:
-                            print("ponderhit! opponent played the expected move")
                             ponder_thread.join()
                             ponder_thread = None
                             best_move , ponder_move = ponder_results[game.id]
-                        else:                            
-                            print("opponent did not play the expected move, stopping ponder")
+                        else:
                             engine.engine.stop()
                             ponder_thread.join()
                             ponder_thread = None
@@ -168,8 +166,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                         binc = int(upd["binc"])
                         print("searching for move")
                         best_move , ponder_move = engine.search_with_ponder(board, wtime, btime, winc, binc)
-                    if is_uci and not ( ponder_move is None ):
-                        #li.chat(game_id,"player","pondering on "+ponder_move.uci())
+                    if is_uci_ponder and not ( ponder_move is None ):
                         mwtime = wtime
                         mbtime = btime
                         elapsed_thinking_time_ms = int ( ( time.time() - thinking_started_at ) * 1000 )
@@ -182,7 +179,6 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                             ponder_board.push(best_move)
                             ponder_board.push(ponder_move)
                             ponder_uci = ponder_move.uci()
-                            print("starting ponder on", ponder_uci, wtime, mwtime, btime, mbtime)
                             ponder_thread = threading.Thread(target = ponder_thread_func, args = (game, engine, ponder_board, mwtime, mbtime, winc, binc))
                             ponder_thread.start()
                     li.make_move(game.id, best_move)
@@ -198,7 +194,6 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
         print("--- {} Game over".format(game.url()))
         engine.quit()
         if not ( ponder_thread is None ):
-            print("shutting down ponder")
             ponder_thread.join()
             ponder_thread = None
         # This can raise queue.NoFull, but that should only happen if we're not processing
