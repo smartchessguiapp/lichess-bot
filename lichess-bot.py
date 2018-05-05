@@ -148,11 +148,11 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                     thinking_started_at = time.time()
                     if not ( ponder_thread is None ):
                         move_uci = moves[-1]
-                        if ponder_uci == move_uci:
+                        if ponder_uci == move_uci:                            
                             ponder_thread.join()
                             ponder_thread = None
                             best_move , ponder_move = ponder_results[game.id]
-                        else:
+                        else:                            
                             engine.engine.stop()
                             ponder_thread.join()
                             ponder_thread = None
@@ -164,7 +164,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                         btime = int(upd["btime"])
                         winc = int(upd["winc"])
                         binc = int(upd["binc"])
-                        best_move , ponder_move = engine.search_with_ponder(board, wtime, btime, winc, binc)
+                        best_move , ponder_move = engine.search_with_ponder(board, wtime, btime, winc, binc)                                        
                     if is_uci_ponder and not ( ponder_move is None ):
                         mwtime = wtime
                         mbtime = btime
@@ -177,7 +177,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                             ponder_board = board.copy()
                             ponder_board.push(best_move)
                             ponder_board.push(ponder_move)
-                            ponder_uci = ponder_move.uci()
+                            ponder_uci = ponder_move.uci()                            
                             ponder_thread = threading.Thread(target = ponder_thread_func, args = (game, engine, ponder_board, mwtime, mbtime, winc, binc))
                             ponder_thread.start()
                     li.make_move(game.id, best_move)
