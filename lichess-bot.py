@@ -164,7 +164,6 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                         btime = int(upd["btime"])
                         winc = int(upd["winc"])
                         binc = int(upd["binc"])
-                        print("searching for move")
                         best_move , ponder_move = engine.search_with_ponder(board, wtime, btime, winc, binc)
                     if is_uci_ponder and not ( ponder_move is None ):
                         mwtime = wtime
