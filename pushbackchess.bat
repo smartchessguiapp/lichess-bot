@@ -1,0 +1,1 @@
+copy chess\*.* python-chess\chess

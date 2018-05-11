@@ -1,0 +1,1 @@
+start pipenv run python lichess-bot.py
