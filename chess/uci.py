@@ -200,10 +200,6 @@ class InfoHandler(object):
         """
         self.info["currline"][cpunr] = moves
 
-    def ebf(self, ebf):
-        """Receives the effective branching factor."""
-        self.info["ebf"] = ebf
-
     def pre_info(self, line):
         """
         Receives new info lines before they are processed.
@@ -369,15 +365,16 @@ class Engine(object):
     def _bestmove(self, arg):
         tokens = arg.split(None, 2)
 
-        self.bestmove = None
+        #self.bestmove = None
         if tokens[0] != "(none)":
             try:
                 self.bestmove = self.board.parse_uci(tokens[0])
             except ValueError:
-                LOGGER.exception("exception parsing bestmove")
+                print("illegal token for bestmove {}".format(tokens[0]))
+                #LOGGER.exception("exception parsing bestmove")
 
         self.ponder = None
-        if self.bestmove is not None and len(tokens) >= 3 and tokens[1] == "ponder" and tokens[2] != "(none)":
+        if False and self.bestmove is not None and len(tokens) >= 3 and tokens[1] == "ponder" and tokens[2] != "(none)":
             # The ponder move must be legal after the bestmove. Generally, we
             # trust the engine on this. But we still have to convert
             # non-UCI_Chess960 castling moves.
@@ -453,26 +450,17 @@ class Engine(object):
             try:
                 intval = int(token)
             except ValueError:
-                LOGGER.exception("exception parsing integer token from info: %r", arg)
+                LOGGER.exception("exception parsing integer token")
                 return
 
             for info_handler in self.info_handlers:
                 fn(info_handler, intval)
 
-        def handle_float_token(token, fn):
-            try:
-                floatval = float(token)
-            except ValueError:
-                LOGGER.exception("exception parsing float token from info: %r", arg)
-
-            for info_handler in self.info_handlers:
-                fn(info_handler, floatval)
-
         def handle_move_token(token, fn):
             try:
                 move = chess.Move.from_uci(token)
             except ValueError:
-                LOGGER.exception("exception parsing move token from info: %r", arg)
+                LOGGER.exception("exception parsing move token")
                 return
 
             for info_handler in self.info_handlers:
@@ -499,7 +487,7 @@ class Engine(object):
                 # Ignore extra spaces. Those can not be directly discarded,
                 # because they may occur in the string parameter.
                 pass
-            elif token in ["depth", "seldepth", "time", "nodes", "pv", "multipv", "score", "currmove", "currmovenumber", "hashfull", "nps", "tbhits", "cpuload", "refutation", "currline", "ebf", "string"]:
+            elif token in ["depth", "seldepth", "time", "nodes", "pv", "multipv", "score", "currmove", "currmovenumber", "hashfull", "nps", "tbhits", "cpuload", "refutation", "currline", "string"]:
                 end_of_parameter()
                 current_parameter = token
 
@@ -529,9 +517,13 @@ class Engine(object):
                 handle_integer_token(token, lambda handler, val: handler.nodes(val))
             elif current_parameter == "pv":
                 try:
+                    parsedmove = board.parse_uci(token)
+                    if len(pv)==0:
+                        self.bestmove = parsedmove                    
                     pv.append(board.push_uci(token))
                 except ValueError:
-                    LOGGER.exception("exception parsing pv from info: %r, position at root: %s", arg, self.board.fen())
+                    print("ignoring illegal pv token {}".format(token))
+                    #LOGGER.exception("exception parsing pv")
             elif current_parameter == "multipv":
                 # Ignore multipv. It was already parsed before anything else.
                 pass
@@ -546,12 +538,12 @@ class Engine(object):
                     try:
                         score_cp = int(token)
                     except ValueError:
-                        LOGGER.exception("exception parsing score cp value from info: %r", arg)
+                        LOGGER.exception("exception parsing score cp value")
                 elif score_kind == "mate":
                     try:
                         score_mate = int(token)
                     except ValueError:
-                        LOGGER.exception("exception parsing score mate value from info: %r", arg)
+                        LOGGER.exception("exception parsing score mate value")
             elif current_parameter == "currmove":
                 handle_move_token(token, lambda handler, val: handler.currmove(val))
             elif current_parameter == "currmovenumber":
@@ -571,7 +563,7 @@ class Engine(object):
                     else:
                         refuted_by.append(board.push_uci(token))
                 except ValueError:
-                    LOGGER.exception("exception parsing refutation from info: %r, position at root: %s", arg, self.board.fen())
+                    LOGGER.exception("exception parsing refutation")
             elif current_parameter == "currline":
                 try:
                     if currline_cpunr is None:
@@ -579,9 +571,7 @@ class Engine(object):
                     else:
                         currline_moves.append(board.push_uci(token))
                 except ValueError:
-                    LOGGER.exception("exception parsing currline from info: %r, position at root: %s", arg, self.board.fen())
-            elif current_parameter == "ebf":
-                handle_float_token(token, lambda handler, val: handler.ebf(val))
+                    LOGGER.exception("exception parsing currline")
 
         end_of_parameter()
 
