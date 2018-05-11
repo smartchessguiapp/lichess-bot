@@ -1,0 +1,69 @@
+language: python
+dist: trusty
+sudo: false
+python:
+ - "2.7"
+ - "3.3"
+ - "3.4"
+ - "3.5"
+ - "3.6"
+ - "3.7-dev"
+ - "pypy"
+ - "pypy3"
+matrix:
+  include:
+   - python: "3.7-dev"
+     env: PERFT=1
+addons:
+  apt:
+    packages:
+     - liblzma-dev
+cache:
+  directories:
+    - data/gaviota
+    - data/syzygy/suicide
+before_install:
+ - # Stockfish
+ - wget https://stockfish.s3.amazonaws.com/stockfish-8-linux.zip
+ - unzip stockfish-8-linux.zip
+ - mkdir -p bin
+ - cp stockfish-8-linux/Linux/stockfish_8_x64 bin/stockfish
+ - export PATH="`pwd`/bin:${PATH}"
+ - which stockfish || (echo $PATH && false)
+ - # Crafty
+ - git clone https://github.com/lazydroid/crafty-chess
+ - cd crafty-chess
+ - make unix-gcc
+ - export PATH="`pwd`:${PATH}"
+ - cd ..
+ - # Gaviota libgtb
+ - git clone https://github.com/michiguel/Gaviota-Tablebases.git --depth 1
+ - cd Gaviota-Tablebases
+ - make
+ - export LD_LIBRARY_PATH="`pwd`:${LD_LIBRARY_PATH}"
+ - cd ..
+ - # Gaviota tablebases
+ - cd data/gaviota
+ - wget --no-verbose --no-check-certificate --no-clobber --input-file TEST-SOURCE.txt
+ - cd ../..
+ - # Suicide syzygy bases
+ - cd data/syzygy/suicide
+ - wget --no-verbose --no-check-certificate --no-clobber --input-file TEST-SOURCE.txt
+ - cd ../../..
+install:
+ - pip install --upgrade pip wheel
+ - pip install --upgrade setuptools
+ - pip install coverage coveralls
+ - pip install -e .[test]
+script:
+ - if [[ $PERFT -ne 1 ]]; then coverage erase; fi
+ - if [[ $PERFT -ne 1 ]]; then coverage run --source chess test.py -vv; fi
+ - if [[ $PERFT -ne 1 ]]; then coverage run --source chess --append -m doctest README.rst --verbose; fi
+ - if [[ $PERFT -ne 1 ]]; then coveralls || [[ $? -eq 139 ]]; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 examples/perft/random.perft --max-nodes 10000; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 examples/perft/tricky.perft; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 --variant giveaway examples/perft/giveaway.perft; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 --variant atomic examples/perft/atomic.perft; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 --variant racingkings examples/perft/racingkings.perft; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 --variant horde examples/perft/horde.perft; fi
+ - if [[ $PERFT -eq 1 ]]; then python examples/perft/perft.py -t 1 --variant crazyhouse examples/perft/crazyhouse.perft; fi
