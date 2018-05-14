@@ -18,6 +18,7 @@ from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError
 from urllib3.exceptions import ProtocolError
 import threading
 import time
+import uuid
 
 try:
     from http.client import RemoteDisconnected
@@ -113,6 +114,9 @@ def start(li, user_profile, engine_factory, config):
 
 ponder_results = {}
 
+ponder_uuid_hexs = {}
+ponder_timeouts = {}
+
 @backoff.on_exception(backoff.expo, BaseException, max_time=600)
 def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
     updates = li.get_game_stream(game_id).iter_lines()
@@ -128,6 +132,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
     engine_cfg = config["engine"]
     is_uci = engine_cfg["protocol"] == "uci"
     is_uci_ponder = is_uci and engine_cfg.get("uci_ponder", False)
+    uci_ponder_timeout = engine_cfg.get("uci_ponder_timeout", 0)
     polyglot_cfg = engine_cfg.get("polyglot", {})
 
     if not polyglot_cfg.get("enabled") or not play_first_book_move(game, engine, board, li, polyglot_cfg):
@@ -137,11 +142,20 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
 
     ponder_thread = None
     ponder_uci = None
+    ponder_uuid_hex = None
 
     def ponder_thread_func(game, engine, board, wtime, btime, winc, binc):
         global ponder_results        
         best_move , ponder_move = engine.search_with_ponder(board, wtime, btime, winc, binc, True)
         ponder_results[game.id] = ( best_move , ponder_move )
+
+    def ponder_timeout_func(game, engine, ponder_uuid_hex, uci_ponder_timeout):
+        global ponder_uuid_hexs
+        global ponder_timeouts
+        time.sleep(uci_ponder_timeout)
+        if ponder_uuid_hexs[game.id] == ponder_uuid_hex:
+            engine.stop()
+            ponder_timeouts[ponder_uuid_hex] = True
 
     try:
         for binary_chunk in updates:            
@@ -159,7 +173,10 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                     thinking_started_at = time.time()
                     if not ( ponder_thread is None ):
                         move_uci = moves[-1]
-                        if ponder_uci == move_uci:                                                        
+                        ponder_timed_out = ponder_uuid_hex in ponder_timeouts
+                        if ponder_timed_out:
+                            print("ponder timed out in game {}".format(game.id))
+                        if ( ponder_uci == move_uci ) and ( not ponder_timed_out ):
                             engine.engine.ponderhit()
                             ponder_thread.join()
                             ponder_thread = None
@@ -169,6 +186,7 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                             ponder_thread.join()
                             ponder_thread = None
                     ponder_uci = None
+                    ponder_uuid_hex = None
 
                     if config.get("fake_think_time") and len(moves) > 9:
                         delay = min(game.clock_initial, game.my_remaining_seconds()) * 0.015
@@ -198,7 +216,13 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config):
                             ponder_board.push(ponder_move)
                             ponder_uci = ponder_move.uci()                            
                             ponder_thread = threading.Thread(target = ponder_thread_func, args = (game, engine, ponder_board, mwtime, mbtime, winc, binc))
-                            ponder_thread.start()
+                            ponder_thread.start()                            
+                            if uci_ponder_timeout > 0:
+                                ponder_uuid_hex = uuid.uuid1().hex
+                                ponder_uuid_hexs[game.id] = ponder_uuid_hex
+                                ponder_timeout_thread = threading.Thread(target = ponder_timeout_func, args = (game, engine, ponder_uuid_hex, uci_ponder_timeout))
+                                ponder_timeout_thread.daemon = True
+                                ponder_timeout_thread.start()
                     li.make_move(game.id, best_move)
                     game.abort_in(config.get("abort_time", 20))
             elif u_type == "ping":

@@ -12,6 +12,7 @@ engine:                      # engine settings
     min_weight: 1            # selects move with highest weight but not below this value
     random: true             # selects move randomly; otherwise select the best but not below the min_weight
   uci_ponder: false          # think on opponent time; only works if "protocol" is "uci"
+  uci_ponder_timeout: 60     # abort pondering if it takes more than "uci_timeout" seconds
   uci_options:               # arbitrary UCI options passed to the engine
 #   Ponder: true             # if uci_ponder is true, check if your engine needs ponder UCI option to be set
     Move Overhead: 100       # increase if your bot flags games too often
